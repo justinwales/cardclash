@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Card Clash</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(900px 600px at 50% 25%,rgba(165,139,255,.18),transparent 70%),#090c18;color:#e9ecf8;
+  font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:16px}
+.box{width:100%;max-width:380px;background:#10142b;border:1px solid #262d55;border-radius:20px;padding:30px 26px;box-shadow:0 30px 80px #000a}
+.mark{font-weight:800;font-size:24px;letter-spacing:.14em}.mark b{color:#9b8aff}
+p{color:#9aa3c7;margin:8px 0 22px;font-size:14px}
+label{display:block;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9aa3c7;margin-bottom:8px}
+input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid #262d55;background:#0b0e1f;color:#fff;font:inherit}
+input:focus{outline:2px solid #9b8aff;outline-offset:1px}
+button{margin-top:14px;width:100%;padding:13px;border:0;border-radius:12px;background:#f2c46d;color:#0a0c18;font:800 15px/1 inherit;font-family:inherit;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+.msg{min-height:22px;margin-top:12px;font-size:13px;color:#ff8ea6}
+.msg.ok{color:#9aa3c7}
+</style>
+</head>
+<body>
+<form class="box" id="f" autocomplete="off">
+  <div class="mark">CARD<b>CLASH</b></div>
+  <p>Private demo. Enter the password to play.</p>
+  <label for="pw">Password</label>
+  <input id="pw" type="password" autofocus required>
+  <button id="go" type="submit">Enter</button>
+  <div class="msg" id="msg" role="status"></div>
+</form>
+<script>
+var META = {"salt": "5d8958967c0947f02f9982a65a031e12", "iv": "1df3940c0af65312c9527129", "iter": 250000, "parts": ["cc-1.bin", "cc-2.bin"], "size": 20964126};
+var hex = function (h) { var a = new Uint8Array(h.length / 2); for (var i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; };
+var msg = document.getElementById("msg"), go = document.getElementById("go"), pw = document.getElementById("pw");
+var dataP = null;
+function getData() {
+  if (!dataP) dataP = Promise.all(META.parts.map(function (p) { return fetch(p).then(function (r) { if (!r.ok) throw new Error("Could not load " + p); return r.arrayBuffer(); }); }))
+    .then(function (bufs) { var out = new Uint8Array(META.size), o = 0; bufs.forEach(function (b) { out.set(new Uint8Array(b), o); o += b.byteLength; }); return out; });
+  return dataP;
+}
+async function unlock(pass) {
+  var base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  var key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: hex(META.salt), iterations: META.iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  var data = await getData();
+  var plain;
+  try { plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: hex(META.iv) }, key, data); }
+  catch (e) { throw new Error("BADPW"); }
+  var html = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  try { sessionStorage.setItem("cc-pw", pass); } catch (e) {}
+  document.open(); document.write(html); document.close();
+}
+function run(pass) {
+  go.disabled = true; msg.className = "msg ok"; msg.textContent = "Unlocking… (first load downloads the game, about 20 MB)";
+  unlock(pass).catch(function (e) {
+    go.disabled = false; msg.className = "msg";
+    msg.textContent = e.message === "BADPW" ? "That password isn't right. Try again." : "Something went wrong: " + e.message;
+    try { sessionStorage.removeItem("cc-pw"); } catch (x) {}
+    pw.select();
+  });
+}
+document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); run(pw.value); });
+try { var saved = sessionStorage.getItem("cc-pw"); if (saved) { pw.value = saved; run(saved); } } catch (e) {}
+getData().catch(function () {});
+</script>
+</body>
+</html>
