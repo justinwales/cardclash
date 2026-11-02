@@ -28,7 +28,7 @@ button:disabled{opacity:.6;cursor:wait}
   <div class="mark">CARD<b>CLASH</b></div>
   <p>Private demo. Enter the password to play.</p>
   <label for="pw">Password</label>
-  <input id="pw" type="password" autofocus required>
+  <input id="pw" type="password" autofocus required autocapitalize="off" autocorrect="off" spellcheck="false">
   <button id="go" type="submit">Enter</button>
   <div class="msg" id="msg" role="status"></div>
 </form>
@@ -62,7 +62,7 @@ function run(pass) {
     pw.select();
   });
 }
-document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); run(pw.value); });
+document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); run(pw.value.trim().toUpperCase()); });
 try { var saved = sessionStorage.getItem("cc-pw"); if (saved) { pw.value = saved; run(saved); } } catch (e) {}
 getData().catch(function () {});
 </script>
