@@ -33,12 +33,12 @@ button:disabled{opacity:.6;cursor:wait}
   <div class="msg" id="msg" role="status"></div>
 </form>
 <script>
-var META = {"salt": "c8ee6ee0d37c500ae3f040c1e7af59ac", "iv": "b9c40b064305de1a682fbb13", "iter": 250000, "parts": ["cc-1.bin", "cc-2.bin"], "size": 21068677};
+var META = {"salt": "4661ec226ea12fc1a7c9d5cd28d9d695", "iv": "e3681e69fb8396b306407577", "iter": 250000, "parts": ["cc-1.bin", "cc-2.bin"], "size": 21067287};
 var hex = function (h) { var a = new Uint8Array(h.length / 2); for (var i = 0; i < a.length; i++) a[i] = parseInt(h.substr(i * 2, 2), 16); return a; };
 var msg = document.getElementById("msg"), go = document.getElementById("go"), pw = document.getElementById("pw");
 var dataP = null;
 function getData() {
-  if (!dataP) dataP = Promise.all(META.parts.map(function (p) { return fetch(p).then(function (r) { if (!r.ok) throw new Error("Could not load " + p); return r.arrayBuffer(); }); }))
+  if (!dataP) dataP = Promise.all(META.parts.map(function (p) { return fetch(p + "?v=" + META.salt, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("Could not load " + p); return r.arrayBuffer(); }); }))
     .then(function (bufs) { var out = new Uint8Array(META.size), o = 0; bufs.forEach(function (b) { out.set(new Uint8Array(b), o); o += b.byteLength; }); return out; });
   return dataP;
 }
